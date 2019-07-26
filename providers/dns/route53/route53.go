@@ -25,6 +25,8 @@ type Config struct {
 	PropagationTimeout time.Duration
 	PollingInterval    time.Duration
 	HostedZoneID       string
+	Endpoint           string
+	Region             string
 }
 
 // NewDefaultConfig returns a default configuration for the DNSProvider
@@ -35,6 +37,8 @@ func NewDefaultConfig() *Config {
 		PropagationTimeout: env.GetOrDefaultSecond("AWS_PROPAGATION_TIMEOUT", 2*time.Minute),
 		PollingInterval:    env.GetOrDefaultSecond("AWS_POLLING_INTERVAL", 4*time.Second),
 		HostedZoneID:       env.GetOrFile("AWS_HOSTED_ZONE_ID"),
+		Endpoint:           env.GetOrDefaultString("AWS_ROUTE53_ENDPOINT", ""),
+		Region:             env.GetOrDefaultString("AWS_REGION", ""),
 	}
 }
 
@@ -89,6 +93,10 @@ func NewDNSProviderConfig(config *Config) (*DNSProvider, error) {
 	retry := customRetryer{}
 	retry.NumMaxRetries = config.MaxRetries
 	sessionCfg := request.WithRetryer(aws.NewConfig(), retry)
+	if config.Endpoint != "" && config.Region != "" {
+		sessionCfg.Endpoint = &config.Endpoint
+		sessionCfg.Region = &config.Region
+	}
 
 	sess, err := session.NewSessionWithOptions(session.Options{Config: *sessionCfg})
 	if err != nil {
